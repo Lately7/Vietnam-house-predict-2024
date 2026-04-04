@@ -39,7 +39,7 @@ for col in text_cols:
         })
 
 
-#Chuyển data về numeric
+# Chuyển data về numeric
 num_cols = ["Area", "Frontage", "Access_Road", "Floors", "Bedrooms", "Bathrooms", "Price"]
 
 for col in num_cols:
@@ -51,9 +51,9 @@ for col in num_cols:
 df = df[(df["Price"].notna()) & (df["Price"] > 0)]
 df = df[(df["Area"].notna()) & (df["Area"] > 0)]
 
-#Loại bỏ những trường hợp làm lệch mô hình
+# Loại bỏ những trường hợp làm lệch mô hình
 df = df[df["Area"] <= 1000]
-#Loại bỏ giá trị cực đoan (0.5% top đầu) gây lệch mô hình
+# Loại bỏ giá trị cực đoan (0.5% top đầu) gây lệch mô hình
 df = df[df["Price"] <= df["Price"].quantile(0.995)]  
 
 
@@ -65,18 +65,18 @@ subset_dup = ["Address", "Area", "Price"]
 subset_dup = [c for c in subset_dup if c in df.columns]
 df = df.drop_duplicates(subset=subset_dup, keep="first")
 
-#Loại bỏ cột thiếu quá nhiều dữ liệu làm lệch mô hình
+# Loại bỏ cột thiếu quá nhiều dữ liệu làm lệch mô hình
 missing_ratio = df.isna().mean().sort_values(ascending=False)
 print("\nTỉ lệ dữ liệu bị thiếu:")
 print(missing_ratio)
 
 drop_cols = []
 for col in ["Balcony_direction", "House_direction"]:
-    #Nếu cột có data bị thiếu > 65% dữ liệu thì loại bỏ
+    # Nếu cột có data bị thiếu > 65% dữ liệu thì loại bỏ
     if col in df.columns and df[col].isna().mean() > 0.65:
         drop_cols.append(col)
 
-#Bỏ cột address vì chuỗi quá phức tạp, là địa chỉ tùy ý nên ko thể xử lý riêng, phải tích hợp thêm NLP
+# Bỏ cột address vì chuỗi quá phức tạp, là địa chỉ tùy ý nên ko thể xử lý riêng, phải tích hợp thêm NLP
 if "Address" in df.columns:
     drop_cols.append("Address")
 
@@ -85,7 +85,7 @@ df = df.drop(columns=drop_cols, errors="ignore")
 print("\nCác cột đã bỏ:", drop_cols)
 
 
-#Tạo những cột missing cho những cột bị thiếu dữ liệu
+# Tạo những cột missing cho những cột bị thiếu dữ liệu
 candidate_missing_flag_cols = ["Frontage", "Access_Road", "Floors", "Bedrooms", "Bathrooms"]
 
 for col in candidate_missing_flag_cols:
