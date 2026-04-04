@@ -7,35 +7,12 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 
-df = pd.read_csv("vietnam_housing_cleaned_encoded.csv")
 
-print("Shape dataset:", df.shape)
-print(df.head())
-
-# Chọn x = input đầu vào, trừ cột Price và Price_log ra, vì đây là cột target
-target_col = "Price_log"
-
-drop_cols = ["Price", "Price_log"]
-feature_cols = [c for c in df.columns if c not in drop_cols]
-
-X = df[feature_cols]
-y = df[target_col]
-
-
-# (Optional) Chia dữ liệu thành 2 phần: 80% để train, 20% để test
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=42
-)
-
-
-# Hàm đánh giá model
 def evaluate_model(model, X_train, y_train, X_test, y_test, model_name="Model"):
     model.fit(X_train, y_train)
 
-    # predict trên log-scale
     y_pred_log = model.predict(X_test)
 
-    # predict trên scale gốc để dễ hiểu hơn
     y_test_real = np.expm1(y_test)
     y_pred_real = np.expm1(y_pred_log)
 
@@ -56,61 +33,82 @@ def evaluate_model(model, X_train, y_train, X_test, y_test, model_name="Model"):
         "r2": r2
     }
 
-# Model sử dụng
-models = [
-    ("Linear Regression", LinearRegression()),
-    ("Random Forest", RandomForestRegressor(
-        n_estimators=300,
-        max_depth=12,
-        min_samples_split=5,
-        min_samples_leaf=2,
-        random_state=42,
-        n_jobs=-1
-    )),
-    ("Gradient Boosting", GradientBoostingRegressor(
-        n_estimators=300,
-        learning_rate=0.05,
-        max_depth=4,
-        random_state=42
-    ))
-]
 
-# Train model + evaluate
-results = []
+def train_pipeline(
+    input_path="vietnam_housing_cleaned_encoded.csv",
+    model_output_path="best_house_price_model.pkl",
+    features_output_path="model_features.pkl",
+    importance_output_path="feature_importance.csv"
+):
+    df = pd.read_csv(input_path)
 
-for name, model in models:
-    result = evaluate_model(model, X_train, y_train, X_test, y_test, name)
-    results.append(result)
+    print("Shape dataset:", df.shape)
+    print(df.head())
 
-# Best model
-# Ưu tiên RMSE thấp nhất
-best_result = min(results, key=lambda x: x["rmse"])
-best_model = best_result["model"]
+    target_col = "Price_log"
+    drop_cols = ["Price", "Price_log"]
+    feature_cols = [c for c in df.columns if c not in drop_cols]
 
-print("\n==============================")
-print("BEST MODEL:", best_result["name"])
-print("BEST RMSE :", round(best_result["rmse"], 4))
-print("BEST MAE  :", round(best_result["mae"], 4))
-print("BEST R2   :", round(best_result["r2"], 4))
-print("==============================")
+    X = df[feature_cols]
+    y = df[target_col]
 
-# Feature importance
-if hasattr(best_model, "feature_importances_"):
-    importances = pd.DataFrame({
-        "Feature": X.columns,
-        "Importance": best_model.feature_importances_
-    }).sort_values(by="Importance", ascending=False)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
 
-    print("\nTop 15 feature importance:")
-    print(importances.head(15))
+    models = [
+        ("Linear Regression", LinearRegression()),
+        ("Random Forest", RandomForestRegressor(
+            n_estimators=300,
+            max_depth=12,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            random_state=42,
+            n_jobs=-1
+        )),
+        ("Gradient Boosting", GradientBoostingRegressor(
+            n_estimators=300,
+            learning_rate=0.05,
+            max_depth=4,
+            random_state=42
+        ))
+    ]
 
-    importances.to_csv("feature_importance.csv", index=False)
+    results = []
+    for name, model in models:
+        result = evaluate_model(model, X_train, y_train, X_test, y_test, name)
+        results.append(result)
 
-# Save
-joblib.dump(best_model, "best_house_price_model.pkl")
-joblib.dump(feature_cols, "model_features.pkl")
+    best_result = min(results, key=lambda x: x["rmse"])
+    best_model = best_result["model"]
 
-print("- best_house_price_model.pkl")
-print("- model_features.pkl")
-if "importances" in locals():
-    print("- feature_importance.csv")
+    print("\n==============================")
+    print("BEST MODEL:", best_result["name"])
+    print("BEST RMSE :", round(best_result["rmse"], 4))
+    print("BEST MAE  :", round(best_result["mae"], 4))
+    print("BEST R2   :", round(best_result["r2"], 4))
+    print("==============================")
+
+    if hasattr(best_model, "feature_importances_"):
+        importances = pd.DataFrame({
+            "Feature": X.columns,
+            "Importance": best_model.feature_importances_
+        }).sort_values(by="Importance", ascending=False)
+
+        print("\nTop 15 feature importance:")
+        print(importances.head(15))
+        importances.to_csv(importance_output_path, index=False)
+
+    joblib.dump(best_model, model_output_path)
+    joblib.dump(feature_cols, features_output_path)
+
+    print("-", model_output_path)
+    print("-", features_output_path)
+    if "importances" in locals():
+        print("-", importance_output_path)
+
+    return best_model, feature_cols
+
+
+if __name__ == "__main__":
+    train_pipeline()
